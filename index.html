@@ -243,6 +243,10 @@
     <input id="loginAccount" autocomplete="username">
     <label>密碼</label>
     <input id="loginPassword" type="password" autocomplete="current-password">
+    <label style="display:flex;align-items:center;gap:8px;font-weight:400;color:var(--ink);margin-top:14px;">
+      <input type="checkbox" id="rememberAccount" style="width:auto;">
+      記住帳號
+    </label>
     <button onclick="doLogin()">登入</button>
     <div id="loginError" class="error-msg"></div>
   </div>
@@ -411,6 +415,11 @@ async function doLogin() {
     currentUser = { 帳號, 姓名: data.姓名, 角色: data.角色, 是否為管理員: data.是否為管理員 };
     localStorage.setItem('attendance_token', token);
     localStorage.setItem('attendance_user', JSON.stringify(currentUser));
+    if (document.getElementById('rememberAccount').checked) {
+      localStorage.setItem('attendance_remember_account', 帳號);
+    } else {
+      localStorage.removeItem('attendance_remember_account');
+    }
     enterApp();
   } catch (e) {
     showError('loginError', '連線失敗：' + e.message);
@@ -673,6 +682,12 @@ async function doMonthlySettlement() {
 }
 
 // ---------- 啟動 ----------
+const rememberedAccount = localStorage.getItem('attendance_remember_account');
+if (rememberedAccount) {
+  document.getElementById('loginAccount').value = rememberedAccount;
+  document.getElementById('rememberAccount').checked = true;
+}
+
 if (token && currentUser) {
   enterApp();
 }
