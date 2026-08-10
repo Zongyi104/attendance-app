@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>出缺勤系統</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#3f5d4e">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<style>
+  :root {
+    --ink: #2b2a27;
+    --sub: #6b6a63;
+    --paper: #f4f1ea;
+    --card: #ffffff;
+    --line: #d8d4c8;
+    --accent: #3f5d4e;
+    --accent-soft: #e4ebe6;
+    --warn: #a3402f;
+    --warn-soft: #f3e3df;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    padding-bottom: 40px;
+  }
+  .hidden { display: none !important; }
+
+  /* ---------- 登入畫面 ---------- */
+  #loginView {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .login-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .login-card h1 {
+    font-size: 20px;
+    margin: 0 0 6px;
+  }
+  .login-card p.sub {
+    font-size: 13px;
+    color: var(--sub);
+    margin: 0 0 24px;
+  }
+
+  /* ---------- 共用元件 ---------- */
+  label {
+    display: block;
+    font-size: 12.5px;
+    color: var(--sub);
+    margin: 12px 0 4px;
+  }
+  input, select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    color: var(--ink);
+  }
+  input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    margin-top: 16px;
+    padding: 11px 18px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+  }
+  button.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  button.small {
+    width: auto;
+    padding: 7px 14px;
+    font-size: 13px;
+    margin-top: 0;
+  }
+  .error-msg {
+    color: var(--warn);
+    background: var(--warn-soft);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+  .toast {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    margin-top: 12px;
+    display: none;
+  }
+  .toast.show { display: block; }
+
+  /* ---------- App 主畫面 ---------- */
+  header.app-bar {
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header.app-bar .who {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  header.app-bar .who span.role {
+    font-weight: 400;
+    color: var(--sub);
+    font-size: 12px;
+  }
+  header.app-bar button {
+    width: auto;
+    margin: 0;
+    padding: 7px 14px;
+    font-size: 13px;
+    background: transparent;
+    color: var(--sub);
+    border: 1px solid var(--line);
+  }
+
+  nav.tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px 0;
+    max-width: 520px;
+    margin: 0 auto;
+    overflow-x: auto;
+  }
+  nav.tabs button {
+    width: auto;
+    margin: 0;
+    padding: 9px 16px;
+    font-size: 13px;
+    background: transparent;
+    color: var(--sub);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  nav.tabs button.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  main {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 15px;
+    margin: 0 0 4px;
+  }
+  .card p.hint {
+    font-size: 12.5px;
+    color: var(--sub);
+    margin: 0 0 10px;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ---------- 紀錄清單 ---------- */
+  .record-list { margin-top: 10px; }
+  .record-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13.5px;
+  }
+  .record-item:last-child { border-bottom: none; }
+  .record-item .main-line { font-weight: 600; }
+  .record-item .sub-line { color: var(--sub); font-size: 12px; margin-top: 2px; }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .badge.pending { background: var(--warn-soft); color: var(--warn); }
+  .empty-note { color: var(--sub); font-size: 13px; padding: 8px 0; }
+
+  /* ---------- 結算勾選清單 ---------- */
+  .settle-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13.5px;
+  }
+  .settle-item:last-child { border-bottom: none; }
+  .settle-item input[type="checkbox"] { width: auto; }
+</style>
+</head>
+<body>
+
+<!-- ============ 登入畫面 ============ -->
+<div id="loginView">
+  <div class="login-card">
+    <h1>出缺勤系統</h1>
+    <p class="sub">請輸入帳號密碼登入</p>
+    <label>帳號</label>
+    <input id="loginAccount" autocomplete="username">
+    <label>密碼</label>
+    <input id="loginPassword" type="password" autocomplete="current-password">
+    <button onclick="doLogin()">登入</button>
+    <div id="loginError" class="error-msg"></div>
+  </div>
+</div>
+
+<!-- ============ App 主畫面 ============ -->
+<div id="appView" class="hidden">
+  <header class="app-bar">
+    <div class="who">
+      <div id="whoName">—</div>
+      <span class="role" id="whoRole"></span>
+    </div>
+    <button onclick="doLogout()">登出</button>
+  </header>
+
+  <nav class="tabs" id="tabNav"></nav>
+
+  <main>
+    <!-- 抓雞 -->
+    <section id="tabChicken" class="hidden">
+      <div class="card">
+        <h2>新增抓雞紀錄</h2>
+        <p class="hint">只記錄有做這件事，不需要輸入數量</p>
+        <label>日期</label>
+        <input id="chickenDate" type="date">
+        <div class="row2">
+          <div>
+            <label>雞的種類</label>
+            <input id="chickenType" placeholder="例如 黃金">
+          </div>
+          <div>
+            <label>地點</label>
+            <input id="chickenLocation" placeholder="例如 學甲">
+          </div>
+        </div>
+        <button onclick="submitChicken()">送出</button>
+        <div id="chickenError" class="error-msg"></div>
+        <div id="chickenToast" class="toast"></div>
+      </div>
+      <div class="card">
+        <h2>我的抓雞紀錄</h2>
+        <div id="chickenList" class="record-list"></div>
+      </div>
+    </section>
+
+    <!-- 打工 -->
+    <section id="tabPartTime" class="hidden">
+      <div class="card">
+        <h2>新增打工紀錄</h2>
+        <label>日期</label>
+        <input id="ptDate" type="date">
+        <div class="row2">
+          <div>
+            <label>上班時間</label>
+            <input id="ptStart" type="time">
+          </div>
+          <div>
+            <label>下班時間</label>
+            <input id="ptEnd" type="time">
+          </div>
+        </div>
+        <label>時薪來源</label>
+        <select id="ptSource" onchange="onWageSourceChange()">
+          <option value="自訂">自訂時薪</option>
+          <option value="套用基本工資">套用目前基本工資</option>
+        </select>
+        <div id="ptWageWrap">
+          <label>時薪金額</label>
+          <input id="ptWage" type="number" placeholder="例如 196">
+        </div>
+        <div id="ptBaseWageHint" class="hint hidden"></div>
+        <button onclick="submitPartTime()">送出</button>
+        <div id="ptError" class="error-msg"></div>
+        <div id="ptToast" class="toast"></div>
+      </div>
+      <div class="card">
+        <h2>我的打工紀錄</h2>
+        <div id="ptList" class="record-list"></div>
+      </div>
+    </section>
+
+    <!-- 管理員 -->
+    <section id="tabAdmin" class="hidden">
+      <div class="card">
+        <h2>抓雞結算</h2>
+        <p class="hint">選擇人員，勾選要結算的紀錄</p>
+        <label>人員</label>
+        <select id="settleAccount" onchange="loadUnsettledChicken()"></select>
+        <div id="settleList" class="record-list"></div>
+        <label>總金額</label>
+        <input id="settleAmount" type="number" placeholder="例如 3500">
+        <button onclick="createSettlement()">建立結算批次</button>
+        <div id="settleError" class="error-msg"></div>
+        <div id="settleToast" class="toast"></div>
+      </div>
+
+      <div class="card">
+        <h2>打工月結算</h2>
+        <label>人員</label>
+        <select id="mSettleAccount"></select>
+        <label>年月</label>
+        <input id="mSettleMonth" type="month">
+        <button onclick="doMonthlySettlement()">執行月結算</button>
+        <div id="mSettleError" class="error-msg"></div>
+        <div id="mSettleToast" class="toast"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const API_BASE = 'https://script.google.com/macros/s/AKfycbxxFcIzApO0JsV_r_BixnlXNb433y-QwqVtX21uXLCzGkvV-65SL9czBDFb9By6eBjgeQ/exec';
+
+let token = localStorage.getItem('attendance_token') || null;
+let currentUser = JSON.parse(localStorage.getItem('attendance_user') || 'null');
+let usersCache = [];
+
+// ---------- API 呼叫 ----------
+async function api(payload) {
+  const body = Object.assign({ token }, payload);
+  const res = await fetch(API_BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || '發生錯誤');
+  return data;
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'error-msg show';
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+function showToast(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'toast show';
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ---------- 登入 / 登出 ----------
+async function doLogin() {
+  const 帳號 = document.getElementById('loginAccount').value.trim();
+  const 密碼 = document.getElementById('loginPassword').value;
+  if (!帳號 || !密碼) { showError('loginError', '請輸入帳號與密碼'); return; }
+  try {
+    const res = await fetch(API_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'login', 帳號, 密碼 })
+    });
+    const data = await res.json();
+    if (!data.ok) { showError('loginError', data.error || '登入失敗'); return; }
+    token = data.token;
+    currentUser = { 帳號, 姓名: data.姓名, 角色: data.角色, 是否為管理員: data.是否為管理員 };
+    localStorage.setItem('attendance_token', token);
+    localStorage.setItem('attendance_user', JSON.stringify(currentUser));
+    enterApp();
+  } catch (e) {
+    showError('loginError', '連線失敗：' + e.message);
+  }
+}
+
+async function doLogout() {
+  try { await api({ action: 'logout' }); } catch (e) {}
+  token = null;
+  currentUser = null;
+  localStorage.removeItem('attendance_token');
+  localStorage.removeItem('attendance_user');
+  document.getElementById('appView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+}
+
+// ---------- 進入主畫面 ----------
+function enterApp() {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('appView').classList.remove('hidden');
+  document.getElementById('whoName').textContent = currentUser.姓名;
+  document.getElementById('whoRole').textContent = currentUser.角色 + (currentUser.是否為管理員 ? '・管理員' : '');
+
+  setDefaultDateTime();
+  buildTabs();
+}
+
+function setDefaultDateTime() {
+  const today = new Date();
+  const dateStr = today.toISOString().slice(0, 10);
+  const timeStr = today.toTimeString().slice(0, 5);
+  ['chickenDate', 'ptDate'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = dateStr;
+  });
+  const s = document.getElementById('ptStart');
+  const en = document.getElementById('ptEnd');
+  if (s) s.value = timeStr;
+  if (en) en.value = timeStr;
+  const m = document.getElementById('mSettleMonth');
+  if (m) m.value = dateStr.slice(0, 7);
+}
+
+function buildTabs() {
+  const roles = (currentUser.角色 || '').split(',').map((s) => s.trim());
+  const tabs = [];
+  if (roles.includes('抓雞')) tabs.push({ id: 'tabChicken', label: '抓雞' });
+  if (roles.includes('打工')) tabs.push({ id: 'tabPartTime', label: '打工' });
+  if (currentUser.是否為管理員) tabs.push({ id: 'tabAdmin', label: '管理' });
+
+  const nav = document.getElementById('tabNav');
+  nav.innerHTML = '';
+  tabs.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = t.label;
+    btn.onclick = () => switchTab(t.id, btn);
+    if (i === 0) btn.classList.add('active');
+    nav.appendChild(btn);
+  });
+
+  if (tabs.length > 0) {
+    switchTab(tabs[0].id, nav.querySelector('button'));
+  }
+}
+
+function switchTab(id, btnEl) {
+  ['tabChicken', 'tabPartTime', 'tabAdmin'].forEach((t) => document.getElementById(t).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  document.querySelectorAll('#tabNav button').forEach((b) => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+
+  if (id === 'tabChicken') loadMyChicken();
+  if (id === 'tabPartTime') { loadMyPartTime(); onWageSourceChange(); }
+  if (id === 'tabAdmin') loadAdminUserOptions();
+}
+
+// ---------- 抓雞 ----------
+async function submitChicken() {
+  const 日期 = document.getElementById('chickenDate').value;
+  const 雞的種類 = document.getElementById('chickenType').value.trim();
+  const 地點 = document.getElementById('chickenLocation').value.trim();
+  if (!日期 || !雞的種類 || !地點) { showError('chickenError', '請填寫日期、種類、地點'); return; }
+  try {
+    await api({ action: 'addChickenRecord', 日期, 雞的種類, 地點 });
+    document.getElementById('chickenType').value = '';
+    document.getElementById('chickenLocation').value = '';
+    showToast('chickenToast', '已新增');
+    loadMyChicken();
+  } catch (e) {
+    showError('chickenError', e.message);
+  }
+}
+
+async function loadMyChicken() {
+  try {
+    const data = await api({ action: 'listChickenRecords', 帳號: currentUser.帳號 });
+    const list = document.getElementById('chickenList');
+    if (!data.records || data.records.length === 0) {
+      list.innerHTML = '<div class="empty-note">還沒有紀錄</div>';
+      return;
+    }
+    const sorted = data.records.slice().sort((a, b) => (a['日期'] < b['日期'] ? 1 : -1));
+    list.innerHTML = sorted.map((r) => {
+      const settled = String(r['是否已結算']).toUpperCase() === 'TRUE';
+      return `<div class="record-item">
+        <div>
+          <div class="main-line">${r['日期']} · ${r['雞的種類']}</div>
+          <div class="sub-line">${r['地點']}</div>
+        </div>
+        <span class="badge ${settled ? '' : 'pending'}">${settled ? '已結算' : '未結算'}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('chickenList').innerHTML = '<div class="empty-note">' + e.message + '</div>';
+  }
+}
+
+// ---------- 打工 ----------
+function onWageSourceChange() {
+  const source = document.getElementById('ptSource').value;
+  const wageWrap = document.getElementById('ptWageWrap');
+  const hint = document.getElementById('ptBaseWageHint');
+  if (source === '自訂') {
+    wageWrap.classList.remove('hidden');
+    hint.classList.add('hidden');
+  } else {
+    wageWrap.classList.add('hidden');
+    hint.classList.remove('hidden');
+    api({ action: 'getSettings' }).then((data) => {
+      hint.textContent = '目前基本時薪：$' + data.目前法定基本時薪;
+    }).catch(() => { hint.textContent = ''; });
+  }
+}
+
+async function submitPartTime() {
+  const 日期 = document.getElementById('ptDate').value;
+  const 上班時間 = document.getElementById('ptStart').value;
+  const 下班時間 = document.getElementById('ptEnd').value;
+  const 時薪來源 = document.getElementById('ptSource').value;
+  const 時薪金額 = document.getElementById('ptWage').value;
+  if (!日期 || !上班時間 || !下班時間) { showError('ptError', '請填寫日期與上下班時間'); return; }
+  if (時薪來源 === '自訂' && !時薪金額) { showError('ptError', '請填寫時薪金額'); return; }
+  try {
+    await api({ action: 'addPartTimeRecord', 日期, 上班時間, 下班時間, 時薪來源, 時薪金額 });
+    showToast('ptToast', '已新增');
+    loadMyPartTime();
+  } catch (e) {
+    showError('ptError', e.message);
+  }
+}
+
+async function loadMyPartTime() {
+  try {
+    const data = await api({ action: 'listPartTimeRecords', 帳號: currentUser.帳號 });
+    const list = document.getElementById('ptList');
+    if (!data.records || data.records.length === 0) {
+      list.innerHTML = '<div class="empty-note">還沒有紀錄</div>';
+      return;
+    }
+    const sorted = data.records.slice().sort((a, b) => (a['日期'] < b['日期'] ? 1 : -1));
+    list.innerHTML = sorted.map((r) => {
+      const settled = String(r['當月是否已結算']).toUpperCase() === 'TRUE';
+      return `<div class="record-item">
+        <div>
+          <div class="main-line">${r['日期']} · ${r['上班時間']}–${r['下班時間']}（${r['時數']}h）</div>
+          <div class="sub-line">時薪 $${r['時薪金額']}（${r['時薪來源']}）</div>
+        </div>
+        <span class="badge ${settled ? '' : 'pending'}">${settled ? '已結算' : '未結算'}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('ptList').innerHTML = '<div class="empty-note">' + e.message + '</div>';
+  }
+}
+
+// ---------- 管理員 ----------
+async function loadAdminUserOptions() {
+  try {
+    if (usersCache.length === 0) {
+      const data = await api({ action: 'listUsers' });
+      usersCache = data.users;
+    }
+    const opts = usersCache.map((u) => `<option value="${u['帳號']}">${u['姓名']}（${u['帳號']}）</option>`).join('');
+    document.getElementById('settleAccount').innerHTML = opts;
+    document.getElementById('mSettleAccount').innerHTML = opts;
+    loadUnsettledChicken();
+  } catch (e) {
+    showError('settleError', e.message);
+  }
+}
+
+async function loadUnsettledChicken() {
+  const acc = document.getElementById('settleAccount').value;
+  if (!acc) return;
+  try {
+    const data = await api({ action: 'listChickenRecords', 帳號: acc, 僅未結算: true });
+    const container = document.getElementById('settleList');
+    if (!data.records || data.records.length === 0) {
+      container.innerHTML = '<div class="empty-note">目前沒有未結算的紀錄</div>';
+      return;
+    }
+    container.innerHTML = data.records.map((r) => `
+      <label class="settle-item">
+        <input type="checkbox" class="settle-cb" value="${r['紀錄編號']}">
+        <span>${r['日期']} · ${r['雞的種類']} · ${r['地點']}</span>
+      </label>
+    `).join('');
+  } catch (e) {
+    showError('settleError', e.message);
+  }
+}
+
+async function createSettlement() {
+  const checked = Array.from(document.querySelectorAll('.settle-cb:checked')).map((cb) => cb.value);
+  if (checked.length === 0) { showError('settleError', '請至少勾選一筆紀錄'); return; }
+  try {
+    await api({ action: 'createChickenSettlement', 紀錄編號陣列: checked, 總金額: document.getElementById('settleAmount').value });
+    showToast('settleToast', '結算完成');
+    document.getElementById('settleAmount').value = '';
+    loadUnsettledChicken();
+  } catch (e) {
+    showError('settleError', e.message);
+  }
+}
+
+async function doMonthlySettlement() {
+  const 帳號 = document.getElementById('mSettleAccount').value;
+  const 年月 = document.getElementById('mSettleMonth').value;
+  if (!帳號 || !年月) { showError('mSettleError', '請選擇人員與年月'); return; }
+  try {
+    const data = await api({ action: 'monthlySettlement', 帳號, 年月 });
+    showToast('mSettleToast', `結算完成：總時數 ${data.總時數}h，應付 $${data.應付金額}`);
+  } catch (e) {
+    showError('mSettleError', e.message);
+  }
+}
+
+// ---------- 啟動 ----------
+if (token && currentUser) {
+  enterApp();
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

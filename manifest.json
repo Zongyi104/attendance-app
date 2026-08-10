@@ -1,0 +1,14 @@
+{
+  "name": "出缺勤系統",
+  "short_name": "出缺勤",
+  "description": "抓雞工作與打工出缺勤記錄",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f1ea",
+  "theme_color": "#3f5d4e",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
