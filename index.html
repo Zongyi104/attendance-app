@@ -332,9 +332,11 @@
     <section id="tabAdmin" class="hidden">
       <div class="card">
         <h2>抓雞結算</h2>
-        <p class="hint">選擇人員，勾選要結算的紀錄</p>
-        <label>人員</label>
-        <select id="settleAccount" onchange="loadUnsettledChicken()"></select>
+        <p class="hint">勾選要結算的紀錄</p>
+        <div id="settleAccountWrap" class="hidden">
+          <label>人員</label>
+          <select id="settleAccount" onchange="loadUnsettledChicken()"></select>
+        </div>
         <div id="settleList" class="record-list"></div>
         <label>總金額</label>
         <input id="settleAmount" type="number" placeholder="例如 3500">
@@ -345,8 +347,10 @@
 
       <div class="card">
         <h2>打工月結算</h2>
-        <label>人員</label>
-        <select id="mSettleAccount"></select>
+        <div id="mSettleAccountWrap" class="hidden">
+          <label>人員</label>
+          <select id="mSettleAccount"></select>
+        </div>
         <label>年月</label>
         <input id="mSettleMonth" type="month">
         <button onclick="doMonthlySettlement()">執行月結算</button>
@@ -459,7 +463,7 @@ function buildTabs() {
   const tabs = [];
   if (roles.includes('抓雞')) tabs.push({ id: 'tabChicken', label: '抓雞' });
   if (roles.includes('打工')) tabs.push({ id: 'tabPartTime', label: '打工' });
-  if (currentUser.是否為管理員) tabs.push({ id: 'tabAdmin', label: '收入/結帳' });
+  if (roles.includes('抓雞') || roles.includes('打工')) tabs.push({ id: 'tabAdmin', label: '收入/結帳' });
 
   const nav = document.getElementById('tabNav');
   nav.innerHTML = '';
@@ -484,7 +488,7 @@ function switchTab(id, btnEl) {
 
   if (id === 'tabChicken') loadMyChicken();
   if (id === 'tabPartTime') { loadMyPartTime(); onWageSourceChange(); }
-  if (id === 'tabAdmin') loadAdminUserOptions();
+  if (id === 'tabAdmin') loadSettleTab();
 }
 
 // ---------- 抓雞 ----------
@@ -592,24 +596,38 @@ async function loadMyPartTime() {
   }
 }
 
-// ---------- 管理員 ----------
-async function loadAdminUserOptions() {
-  try {
-    if (usersCache.length === 0) {
-      const data = await api({ action: 'listUsers' });
-      usersCache = data.users;
+// ---------- 收入/結帳 ----------
+async function loadSettleTab() {
+  if (currentUser.是否為管理員) {
+    document.getElementById('settleAccountWrap').classList.remove('hidden');
+    document.getElementById('mSettleAccountWrap').classList.remove('hidden');
+    try {
+      if (usersCache.length === 0) {
+        const data = await api({ action: 'listUsers' });
+        usersCache = data.users;
+      }
+      const opts = usersCache.map((u) => `<option value="${u['帳號']}">${u['姓名']}（${u['帳號']}）</option>`).join('');
+      document.getElementById('settleAccount').innerHTML = opts;
+      document.getElementById('mSettleAccount').innerHTML = opts;
+    } catch (e) {
+      showError('settleError', e.message);
     }
-    const opts = usersCache.map((u) => `<option value="${u['帳號']}">${u['姓名']}（${u['帳號']}）</option>`).join('');
-    document.getElementById('settleAccount').innerHTML = opts;
-    document.getElementById('mSettleAccount').innerHTML = opts;
-    loadUnsettledChicken();
-  } catch (e) {
-    showError('settleError', e.message);
+  } else {
+    document.getElementById('settleAccountWrap').classList.add('hidden');
+    document.getElementById('mSettleAccountWrap').classList.add('hidden');
   }
+  loadUnsettledChicken();
+}
+
+function getSettleAccount() {
+  return currentUser.是否為管理員 ? document.getElementById('settleAccount').value : currentUser.帳號;
+}
+function getMSettleAccount() {
+  return currentUser.是否為管理員 ? document.getElementById('mSettleAccount').value : currentUser.帳號;
 }
 
 async function loadUnsettledChicken() {
-  const acc = document.getElementById('settleAccount').value;
+  const acc = getSettleAccount();
   if (!acc) return;
   try {
     const data = await api({ action: 'listChickenRecords', 帳號: acc, 僅未結算: true });
@@ -643,7 +661,7 @@ async function createSettlement() {
 }
 
 async function doMonthlySettlement() {
-  const 帳號 = document.getElementById('mSettleAccount').value;
+  const 帳號 = getMSettleAccount();
   const 年月 = document.getElementById('mSettleMonth').value;
   if (!帳號 || !年月) { showError('mSettleError', '請選擇人員與年月'); return; }
   try {
