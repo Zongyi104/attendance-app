@@ -284,6 +284,8 @@
       </div>
       <div class="card">
         <h2>我的抓雞紀錄</h2>
+        <label>月份</label>
+        <input id="chickenMonthFilter" type="month" onchange="loadMyChicken()">
         <div id="chickenList" class="record-list"></div>
       </div>
     </section>
@@ -320,6 +322,8 @@
       </div>
       <div class="card">
         <h2>我的打工紀錄</h2>
+        <label>月份</label>
+        <input id="ptMonthFilter" type="month" onchange="loadMyPartTime()">
         <div id="ptList" class="record-list"></div>
       </div>
     </section>
@@ -444,6 +448,10 @@ function setDefaultDateTime() {
   if (en) en.value = timeStr;
   const m = document.getElementById('mSettleMonth');
   if (m) m.value = dateStr.slice(0, 7);
+  const cm = document.getElementById('chickenMonthFilter');
+  if (cm) cm.value = dateStr.slice(0, 7);
+  const pm = document.getElementById('ptMonthFilter');
+  if (pm) pm.value = dateStr.slice(0, 7);
 }
 
 function buildTabs() {
@@ -451,7 +459,7 @@ function buildTabs() {
   const tabs = [];
   if (roles.includes('抓雞')) tabs.push({ id: 'tabChicken', label: '抓雞' });
   if (roles.includes('打工')) tabs.push({ id: 'tabPartTime', label: '打工' });
-  if (currentUser.是否為管理員) tabs.push({ id: 'tabAdmin', label: '管理' });
+  if (currentUser.是否為管理員) tabs.push({ id: 'tabAdmin', label: '收入/結帳' });
 
   const nav = document.getElementById('tabNav');
   nav.innerHTML = '';
@@ -500,11 +508,14 @@ async function loadMyChicken() {
   try {
     const data = await api({ action: 'listChickenRecords', 帳號: currentUser.帳號 });
     const list = document.getElementById('chickenList');
-    if (!data.records || data.records.length === 0) {
-      list.innerHTML = '<div class="empty-note">還沒有紀錄</div>';
+    const month = document.getElementById('chickenMonthFilter').value;
+    let records = data.records || [];
+    if (month) records = records.filter((r) => String(r['日期']).indexOf(month) === 0);
+    if (records.length === 0) {
+      list.innerHTML = '<div class="empty-note">這個月還沒有紀錄</div>';
       return;
     }
-    const sorted = data.records.slice().sort((a, b) => (a['日期'] < b['日期'] ? 1 : -1));
+    const sorted = records.slice().sort((a, b) => (a['日期'] < b['日期'] ? 1 : -1));
     list.innerHTML = sorted.map((r) => {
       const settled = String(r['是否已結算']).toUpperCase() === 'TRUE';
       return `<div class="record-item">
@@ -558,11 +569,14 @@ async function loadMyPartTime() {
   try {
     const data = await api({ action: 'listPartTimeRecords', 帳號: currentUser.帳號 });
     const list = document.getElementById('ptList');
-    if (!data.records || data.records.length === 0) {
-      list.innerHTML = '<div class="empty-note">還沒有紀錄</div>';
+    const month = document.getElementById('ptMonthFilter').value;
+    let records = data.records || [];
+    if (month) records = records.filter((r) => String(r['日期']).indexOf(month) === 0);
+    if (records.length === 0) {
+      list.innerHTML = '<div class="empty-note">這個月還沒有紀錄</div>';
       return;
     }
-    const sorted = data.records.slice().sort((a, b) => (a['日期'] < b['日期'] ? 1 : -1));
+    const sorted = records.slice().sort((a, b) => (a['日期'] < b['日期'] ? 1 : -1));
     list.innerHTML = sorted.map((r) => {
       const settled = String(r['當月是否已結算']).toUpperCase() === 'TRUE';
       return `<div class="record-item">
